@@ -36,4 +36,5 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency 'rsync', '~> 1.0.9'
   spec.add_runtime_dependency 'mail', '~> 2.7.0'
+  spec.add_runtime_dependency 'aws-sdk-s3', '~> 1.30.1'
 end

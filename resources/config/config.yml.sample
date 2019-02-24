@@ -35,9 +35,9 @@ destination_servers:
   # server: The IP address or hostname of the destination server
   # username: (Optional) The username to use in contacting the server. If not
   #           provided, the username of user running the command will be used.
-  # directory: The directory on the destination server to compare with and
-  #            send the files to. The directory should include the trailing
-  #            slash.
+  # path: The path on the destination server to compare with and
+  #            send the files to. The path should include the leading and
+  #            trailing slash.
   # disable_move_on_failure: (Optional) True/false boolean. If set to true, the
   #                          source files will not be moved if there was an
   #                          error when communicating with the server.
@@ -48,31 +48,71 @@ destination_servers:
   # Sample entry:
   #  - server: "192.168.41.105"
   #    username: vagrant
-  #    directory: "/tmp/"
+  #    path: "/tmp/"
   #    disable_move_on_failure: true
   - server:
     username:
-    directory:
+    path:
     disable_move_on_failure: false
+
+# Array of destination buckets the files should be transferred to.
+destination_buckets:
+  #
+  # Multiple entries are allowed, and consist of the following:
+  #
+  # bucket: The name of the S3 bucket
+  # region: The region of the S3 bucket
+  # path:   The path on the destination bucket to compare with and
+  #            send the files to. The path should include the trailing
+  #            slash.
+  # sub_prefix: (Optional) Allowed values are: year, year_month
+  #                 year - The year from the filename is appended to the path.
+  #                 year_month - The year and month from the filename is
+  #                              appended to the path.
+  #             The year and month are extracted from the file or folder name.
+  #             And the following patterns are recognized:
+  #                 - WTOP_PGM_60_09-30-2016_0000.mp3
+  #                 - WTOP_09-30-2018_0000.mp3
+  #                 - 09-30-2016/
+  #
+  # disable_move_on_failure: (Optional) True/false boolean. If set to true, the
+  #                          source files will not be moved if there was an
+  #                          error when communicating with the bucket.
+  #                          This is typically set to true for "production"
+  #                          bucket, and omitted or false for dev/stage
+  #                          buckets.
+  #
+  # Sample entry:
+  #  - bucket: my-s3-bucket
+  #    region: us-east-1
+  #    path: "my-prefix/"
+  #    sub_prefix: year_month
+  #    disable_move_on_failure: true
+  - bucket:
+    region:
+    path:
+    sub_prefix:
+    disable_move_on_failure: false
+
 
 # Settings specifying the SMTP server for sending email
 smtp_server:
-    # The IP address/hostname of the SMTP server
-    address: localhost
-    # The port to contact the SMTP server
-    port: 25
-    # (Optional) The domain to use with the SMTP server
-    domain:
-    # (Optional) The authentication scheme to use, typicially ":plain", ":login", or
-    # ":cram_md5"
-    authentication:
-    # (Optional) The username to send for authentication
-    user_name:
-    # (Optional) The password to send for authentication
-    password:
-    # (Optional) If true, mail will be "sent" to a logfile, instead of actually
-    # being sent
-    debug: true
+  # The IP address/hostname of the SMTP server
+  address: localhost
+  # The port to contact the SMTP server
+  port: 25
+  # (Optional) The domain to use with the SMTP server
+  domain:
+  # (Optional) The authentication scheme to use, typicially ":plain", ":login", or
+  # ":cram_md5"
+  authentication:
+  # (Optional) The username to send for authentication
+  user_name:
+  # (Optional) The password to send for authentication
+  password:
+  # (Optional) If true, mail will be "sent" to a logfile, instead of actually
+  # being sent
+  debug: true
 
 # Settings to use in construction mail messages
 mail:
@@ -80,4 +120,3 @@ mail:
   from: test@example.com
   # The "to" address to send emails to
   to: test@example.com
-

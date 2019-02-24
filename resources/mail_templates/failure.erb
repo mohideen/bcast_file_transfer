@@ -1,4 +1,4 @@
-<% (success_servers, failed_servers) = script_result.server_results.partition(&:success?) %>
+<% (success_destinations, failed_destinations) = script_result.destination_results.partition(&:success?) %>
 
 File Transfer FAILED!
 
@@ -7,21 +7,22 @@ Job Name: <%= script_result.config_hash['job_name'] %>
 
 Failures
 --------
-<% failed_servers.each do |fs| %>
-  dest_server: <%= fs.dest_server %>
+<% failed_destinations.each do |fd| %>
+  dest_name: <%= fd.dest_name %>
+  dest_type: <%= fd.dest_type %>
 
-  dest_directory: <%= fs.dest_directory %>
+  dest_directory: <%= fd.dest_directory %>
 
-  <% unless fs.comparison_result.success? %>
+  <% unless fd.comparison_result.success? %>
     There were comparison errors:
-        error: <%= fs.comparison_result.result.error %>
-        exitcode: <%= fs.comparison_result.result.exitcode %>
+        error: <%= fd.comparison_result.result.error %>
+        exitcode: <%= fd.comparison_result.result.exitcode %>
 
   <% end %>
 
-  <% unless fs.transfer_results.map(&:success?).all? %>
-    <% (successful_transfers, failed_transfers) = fs.transfer_results.partition(&:success?) %>
-    <% total_transfer_count = fs.transfer_results.count %>
+  <% unless fd.transfer_results.map(&:success?).all? %>
+    <% (successful_transfers, failed_transfers) = fd.transfer_results.partition(&:success?) %>
+    <% total_transfer_count = fd.transfer_results.count %>
 
     <%= failed_transfers.count %> of <%= total_transfer_count %> files failed:
 
@@ -43,17 +44,18 @@ Failures
   <% end %>
 <% end %>
 
-<% if success_servers.any? %>
+<% if success_destinations.any? %>
   Successes
   ---------
-  <% success_servers.each do |ss| %>
+  <% success_destinations.each do |sd| %>
 
-    dest_server: <%= ss.dest_server %>
+    dest_name: <%= sd.dest_name %>
+    dest_type: <%= sd.dest_type %>
 
-    dest_directory: <%= ss.dest_directory %>
+    dest_directory: <%= sd.dest_directory %>
 
-    <% successful_transfers = ss.transfer_results.select(&:success?) %>
-    <% total_transfer_count = ss.transfer_results.count %>
+    <% successful_transfers = sd.transfer_results.select(&:success?) %>
+    <% total_transfer_count = sd.transfer_results.count %>
 
     <% if total_transfer_count == 0 %>
       No files needed to be transferred.

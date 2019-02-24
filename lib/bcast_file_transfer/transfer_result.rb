@@ -1,10 +1,9 @@
 module BcastFileTransfer
   # Holds the result of a single "transfer" operation
   class TransferResult
-    attr_reader :dest_server, :dest_directory, :src_dir, :result, :file
+    attr_reader :dest_directory, :src_dir, :result, :file
 
-    def initialize(dest_server, dest_directory, src_dir, file, result)
-      @dest_server = dest_server
+    def initialize(dest_directory, src_dir, file, result)
       @dest_directory = dest_directory
       @src_dir = src_dir
       @file = file

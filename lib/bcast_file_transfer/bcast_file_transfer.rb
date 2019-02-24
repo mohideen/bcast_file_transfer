@@ -11,54 +11,25 @@ module BcastFileTransfer
     include Logging
 
     # Determine files that need to be transferred
-    def files_to_transfer(destination_server, src_dir) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
-      dest_server = destination_server['server']
-      dest_directory = destination_server['directory']
-      dest_username = destination_server['username']
-
-      rsync_options = ['--archive', '--dry-run', '--itemize-changes']
-
-      logger.debug "rsync #{rsync_options.join(' ')} #{src_dir} #{dest_username}@#{dest_server}:#{dest_directory}"
-
-      transfer_files = []
-      result = Rsync.run(src_dir, "#{dest_username}@#{dest_server}:#{dest_directory}", rsync_options)
-      if result.success?
-        result.changes.select { |c| c.file_type == :file && c.update_type == :sent }.each do |change|
-          transfer_files << change.filename
-        end
+    def files_to_transfer(type, destination, src_dir)
+      if type == 'server'
+        @rsync_transfer = RsyncTransfer.new
+        @rsync_transfer.files_to_transfer(destination, src_dir)
       else
-        logger.error(
-          "Comparison failure: exitcode: #{result.exitcode}, " \
-          "error: #{result.error}, " \
-          "dest_server: #{dest_server}, " \
-          "dest_directory: #{dest_directory}"
-        )
+        @s3_transfer = S3Transfer.new
+        @s3_transfer.files_to_transfer(destination, src_dir)
       end
-
-      ComparisonResult.new(dest_server, dest_directory, src_dir, result, transfer_files)
     end
 
-    # Copies the given file to the destination server.
-    def transfer_file(destination_server, src_dir, filename) # rubocop:disable Metrics/AbcSize
-      dest_server = destination_server['server']
-      dest_directory = destination_server['directory']
-      dest_username = destination_server['username']
-
-      # Append "./" between src_dir and filename. This used by the rsync
-      # "relative" functionlity to where the path to starts when transferring
-      # the file.
-      src_file_path = src_dir + './' + filename
-
-      rsync_options = ['--archive', '--itemize-changes', '--relative']
-
-      logger.info "Transferring #{src_file_path} to #{dest_server}:#{dest_directory}"
-      logger.debug "\trsync #{rsync_options.join(' ')} #{src_file_path} #{dest_username}@#{dest_server}:#{dest_directory}" # rubocop:disable Metrics/LineLength
-
-      result = Rsync.run(src_file_path, "#{dest_username}@#{dest_server}:#{dest_directory}", rsync_options)
-
-      logger.error "Error transferring #{filename} to #{dest_server}:#{dest_directory}" unless result.success?
-
-      TransferResult.new(dest_server, dest_directory, src_dir, filename, result)
+    # Copies the given file to the destination .
+    def transfer_file(type, destination, src_dir, filename)
+      if type == 'server'
+        @rsync_transfer = RsyncTransfer.new
+        @rsync_transfer.transfer_file(destination, src_dir, filename)
+      else
+        @s3_transfer = S3Transfer.new
+        @s3_transfer.transfer_file(destination, src_dir, filename)
+      end
     end
 
     # Removes any empty subdirectories in the given directory.

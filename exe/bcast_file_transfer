@@ -26,20 +26,34 @@ bcast_file_transfer = BcastFileTransfer::BcastFileTransfer.new
 logger = BcastFileTransfer::Logging.logger_for(self.class.name)
 
 src_dir = config_hash['src_dir']
-server_results = []
-destination_servers = config_hash['destination_servers']
+destination_results = []
+destination_servers = config_hash['destination_servers'] || []
+destination_buckets = config_hash['destination_buckets'] || []
+destinations = []
 
-# For each destination server...
-destination_servers.each do |dest|
+destination_servers.each do |server|
+  server['type'] = 'server'
+  destinations << server
+end
+
+destination_buckets.each do |bucket|
+  bucket['type'] = 'bucket'
+  destinations << bucket
+end
+
+# For each destination...
+destinations.each do |dest|
   transfer_results = []
+  dest_type = dest['type']
+  dest_identity = dest_type == 'server' ? dest['server'] : dest['bucket']
 
   # Determine which files need to be transferred
-  comparison_result = bcast_file_transfer.files_to_transfer(dest, src_dir)
+  comparison_result = bcast_file_transfer.files_to_transfer(dest_type, dest, src_dir)
 
   unless comparison_result.success?
     # Could not get list of files to transfer, so skip to next server
-    server_results << BcastFileTransfer::ServerResult.new(
-      comparison_result.dest_server, comparison_result.dest_directory,
+    destination_results << BcastFileTransfer::DestinationResult.new(
+      dest_identity, dest_type, comparison_result.dest_directory,
       dest['disable_move_on_failure'], comparison_result, transfer_results
     )
     next
@@ -50,18 +64,18 @@ destination_servers.each do |dest|
 
   # Transfer each file to the destination server
   transfer_files.each do |file|
-    result = bcast_file_transfer.transfer_file(dest, src_dir, file)
+    result = bcast_file_transfer.transfer_file(dest_type, dest, src_dir, file)
     transfer_results << result
   end
 
-  server_results << BcastFileTransfer::ServerResult.new(
-    comparison_result.dest_server, comparison_result.dest_directory,
+  destination_results << BcastFileTransfer::DestinationResult.new(
+    dest_identity, dest_type, comparison_result.dest_directory,
     dest['disable_move_on_failure'], comparison_result, transfer_results
   )
 end
 
 # Move successfully transferred files
-all_transfers = server_results.flat_map(&:transfer_results)
+all_transfers = destination_results.flat_map(&:transfer_results)
 successful_transfers = all_transfers.select(&:success?)
 success_files = successful_transfers.map(&:file).uniq
 
@@ -69,14 +83,14 @@ move_files_after_successful_transfer = config_hash['move_files_after_successful_
 
 # Determine whether to actually do the move, based on the
 # 'move_files_after_successful_transfer' config, and whether any
-# servers marked with "disable_move_on_failure" has failures
-failed_servers = server_results.reject(&:success?)
-critical_servers_failed = failed_servers.map(&:disable_move_on_failure).any?
+# destinations marked with "disable_move_on_failure" has failures
+failed_destinations = destination_results.reject(&:success?)
+critical_destinations_failed = failed_destinations.map(&:disable_move_on_failure).any?
 
 prune_results = []
 move_results = []
 
-if move_files_after_successful_transfer && !critical_servers_failed
+if move_files_after_successful_transfer && !critical_destinations_failed
   processed_files = success_files
   succesful_transfer_dir = config_hash['succesful_transfer_dir']
   move_results = bcast_file_transfer.move_files_after_transfer(processed_files, src_dir, succesful_transfer_dir)
@@ -87,5 +101,5 @@ if move_files_after_successful_transfer && !critical_servers_failed
 end
 
 # Send email describing results
-script_result = BcastFileTransfer::ScriptResult.new(config_hash, server_results, move_results, prune_results)
+script_result = BcastFileTransfer::ScriptResult.new(config_hash, destination_results, move_results, prune_results)
 bcast_file_transfer.send_mail(config_hash, script_result)
